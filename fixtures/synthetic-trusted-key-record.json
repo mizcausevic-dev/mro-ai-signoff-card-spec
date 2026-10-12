@@ -1,0 +1,5 @@
+{
+  "key_id": "synthetic-reviewer-key-01",
+  "public_key_file": "synthetic-public-key.pub",
+  "test_only": true
+}

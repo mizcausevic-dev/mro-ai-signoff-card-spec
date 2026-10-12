@@ -1,0 +1,23 @@
+{
+  "mro_signoff_card_version": "0.1",
+  "finding": {
+    "id": "synthetic-unsigned-001",
+    "kind": "ndt",
+    "summary": "Synthetic finding lacking a signature for an invalid test fixture.",
+    "model_id": "synthetic-inspection-assistant",
+    "model_version": "0.1.0",
+    "confidence": 0.4
+  },
+  "artifact": {
+    "id": "synthetic-ndt-image-001",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "evidence_refs": ["https://example.org/aviation/evidence/synthetic-ndt-image-001.json"],
+  "human_review": {
+    "staff_id": "synthetic-reviewer-01",
+    "decision": "override",
+    "reviewed_at": "2026-10-12T14:00:00Z",
+    "authority_ref": "https://example.org/aviation/authority/synthetic-reviewer-01",
+    "override_reason": "The synthetic finding is not supported by the image fixture."
+  }
+}
