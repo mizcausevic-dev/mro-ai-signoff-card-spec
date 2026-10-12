@@ -86,7 +86,9 @@ const duplicateDecision = readFileSync(new URL(`examples/${files[0]}`, root), "u
 assert.throws(() => verifyCardSignatureRaw(duplicateDecision, trustedKey), /Duplicate JSON object key/);
 assert.throws(() => parseJcsJsonStrict('{"decision":1,"deci\\u0073ion":2}'), /Duplicate JSON object key/);
 assert.throws(() => parseJcsJsonStrict('{"n":9007199254740993}'), /unsafe I-JSON number/);
+assert.equal(parseJcsJsonStrict('{"n":1E30}').n, 1e30);
 assert.throws(() => parseJcsJsonStrict('{"n":1e400}'), /Non-finite or unsafe I-JSON number/);
+assert.throws(() => parseJcsJsonStrict('{"n":1e-1000}'), /Non-finite or unsafe I-JSON number/);
 assert.throws(() => parseJcsJsonStrict(Buffer.from([0xff])), /encoded|encoding/i);
 assert.throws(() => parseJcsJsonStrict(Buffer.from([0xef, 0xbb, 0xbf, 0x7b, 0x7d])), /BOM/);
 process.stdout.write("REJECTED duplicate keys, unsafe integers, and non-finite numeric literals before signature verification\n");

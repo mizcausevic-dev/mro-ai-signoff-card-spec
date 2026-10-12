@@ -79,8 +79,13 @@ export function parseJcsJsonStrict(raw) {
     const match = NUMBER.exec(raw);
     if (!match) throw new SyntaxError("Invalid JSON value");
     index = NUMBER.lastIndex;
-    const parsed = Number(match[0]);
-    if (!Number.isFinite(parsed) || (Number.isInteger(parsed) && !Number.isSafeInteger(parsed))) {
+    const token = match[0];
+    const parsed = Number(token);
+    const integerLiteral = !/[.eE]/.test(token);
+    const nonzeroMantissa = /[1-9]/.test(token.split(/[eE]/)[0]);
+    if (!Number.isFinite(parsed)
+      || (integerLiteral && !Number.isSafeInteger(parsed))
+      || (parsed === 0 && nonzeroMantissa)) {
       throw new TypeError("Non-finite or unsafe I-JSON number");
     }
   }
