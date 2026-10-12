@@ -7,7 +7,7 @@ The card binds a model finding to the SHA-256 digest of the exact source artifac
 ## Quickstart
 
 1. Author a JSON card against [mro-ai-signoff-card.schema.json](mro-ai-signoff-card.schema.json). The [signed fictional example](examples/synthetic-borescope-finding.json) is only a format and test fixture.
-2. Run `npm ci` and `npm test`. The test checks schema semantics, exact fixture-byte hashing, a known-positive Ed25519 signature, tamper rejection, and known-invalid controls.
+2. Run `npm ci` and `npm test`. The test checks schema semantics, strict raw JSON parsing, exact fixture-byte hashing, a known-positive Ed25519 signature, tamper rejection, and known-invalid controls.
 3. For a real record, hash the original artifact bytes without text normalization. Sign the JCS-canonicalized card excluding only `signature.signature_b64url` with the `JCS-SHA256-Ed25519-v1` profile. Obtain the reviewer public key and authority status from separately trusted systems.
 
 `scripts/create-synthetic-signed-fixture.mjs` can regenerate the fictional example and public key for local development. It creates a fresh ephemeral private key in memory and writes **no private key**. Regeneration changes the committed example and is not a production signing procedure.

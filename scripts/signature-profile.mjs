@@ -1,4 +1,5 @@
 import { createHash, verify } from "node:crypto";
+import { parseJcsJsonStrict } from "./strict-json.mjs";
 
 // RFC 8785 JCS uses ECMAScript primitive serialization and UTF-16 key ordering.
 // Cards must be parsed from unique-key I-JSON before this function is called.
@@ -32,6 +33,8 @@ export function signatureDigest(card) {
   return createHash("sha256").update(signedPayload(card)).digest();
 }
 
+// Only use this parsed-object helper after strict raw parsing. JSON.parse alone
+// loses duplicate keys and may round unsafe integer literals before hashing.
 export function verifyCardSignature(card, trustedKeyRecord) {
   if (card.signature?.profile !== "JCS-SHA256-Ed25519-v1") return false;
   if (!trustedKeyRecord?.publicKey || !trustedKeyRecord.keyId) return false;
@@ -39,4 +42,8 @@ export function verifyCardSignature(card, trustedKeyRecord) {
   const signature = Buffer.from(card.signature.signature_b64url, "base64url");
   if (signature.length !== 64) return false;
   return verify(null, signatureDigest(card), trustedKeyRecord.publicKey, signature);
+}
+
+export function verifyCardSignatureRaw(rawCard, trustedKeyRecord) {
+  return verifyCardSignature(parseJcsJsonStrict(rawCard), trustedKeyRecord);
 }

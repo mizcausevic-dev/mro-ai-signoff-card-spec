@@ -3,7 +3,8 @@ import { createHash, createPublicKey, generateKeyPairSync } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { canonicalize, verifyCardSignature } from "./signature-profile.mjs";
+import { canonicalize, verifyCardSignatureRaw } from "./signature-profile.mjs";
+import { parseJcsJsonStrict } from "./strict-json.mjs";
 
 const root = new URL("../", import.meta.url);
 const schema = JSON.parse(readFileSync(new URL("mro-ai-signoff-card.schema.json", root), "utf8"));
@@ -29,7 +30,8 @@ process.stdout.write("VERIFIED JCS number serialization, UTF-16 key order, and l
 const files = readdirSync(new URL("examples/", root)).filter((name) => name.endsWith(".json")).sort();
 if (files.length === 0) throw new Error("No valid MRO examples found");
 for (const file of files) {
-  const card = JSON.parse(readFileSync(new URL(`examples/${file}`, root), "utf8"));
+  const raw = readFileSync(new URL(`examples/${file}`, root));
+  const card = parseJcsJsonStrict(raw);
   if (!validate(card)) throw new Error(`${file}: ${ajv.errorsText(validate.errors)}`);
   if (card.human_review.decision !== "override" && card.human_review.override_reason !== undefined) {
     throw new Error(`${file}: override_reason supplied without an override decision`);
@@ -41,7 +43,7 @@ for (const file of files) {
   if (card.artifact.sha256 !== createHash("sha256").update(artifact).digest("hex")) {
     throw new Error(`${file}: artifact digest mismatch`);
   }
-  if (!verifyCardSignature(card, trustedKey)) throw new Error(`${file}: signature verification failed`);
+  if (!verifyCardSignatureRaw(raw, trustedKey)) throw new Error(`${file}: signature verification failed`);
   process.stdout.write(`VALID and VERIFIED synthetic fixture examples/${file}\n`);
 }
 
@@ -58,7 +60,7 @@ for (const [label, change] of [
   const altered = structuredClone(base);
   change(altered);
   if (!validate(altered)) throw new Error(`${label}: control unexpectedly schema-invalid`);
-  if (verifyCardSignature(altered, trustedKey)) throw new Error(`${label}: tampered card verified`);
+  if (verifyCardSignatureRaw(JSON.stringify(altered), trustedKey)) throw new Error(`${label}: tampered card verified`);
   process.stdout.write(`REJECTED ${label}\n`);
 }
 
@@ -68,16 +70,26 @@ delete override.human_review.override_reason;
 if (validate(override)) throw new Error("Override without reason was accepted");
 process.stdout.write("REJECTED override without reason\n");
 
-if (verifyCardSignature(base, null)) throw new Error("Signature verified without a trusted key");
+if (verifyCardSignatureRaw(JSON.stringify(base), null)) throw new Error("Signature verified without a trusted key");
 process.stdout.write("REJECTED signature without external trust anchor\n");
 
 const unrelatedKey = { keyId: trustedKey.keyId, publicKey: generateKeyPairSync("ed25519").publicKey };
-if (verifyCardSignature(base, unrelatedKey)) throw new Error("Signature verified with an unrelated key");
+if (verifyCardSignatureRaw(JSON.stringify(base), unrelatedKey)) throw new Error("Signature verified with an unrelated key");
 process.stdout.write("REJECTED signature with unrelated key\n");
 
 const wrongKeyId = { keyId: "unrelated-reviewer-key", publicKey: trustedKey.publicKey };
-if (verifyCardSignature(base, wrongKeyId)) throw new Error("Signature verified with an unbound key identifier");
+if (verifyCardSignatureRaw(JSON.stringify(base), wrongKeyId)) throw new Error("Signature verified with an unbound key identifier");
 process.stdout.write("REJECTED signature with mismatched trusted key ID\n");
+
+const duplicateDecision = readFileSync(new URL(`examples/${files[0]}`, root), "utf8")
+  .replace('"decision": "accept"', '"decision": "accept", "decision": "reject"');
+assert.throws(() => verifyCardSignatureRaw(duplicateDecision, trustedKey), /Duplicate JSON object key/);
+assert.throws(() => parseJcsJsonStrict('{"decision":1,"deci\\u0073ion":2}'), /Duplicate JSON object key/);
+assert.throws(() => parseJcsJsonStrict('{"n":9007199254740993}'), /unsafe I-JSON number/);
+assert.throws(() => parseJcsJsonStrict('{"n":1e400}'), /Non-finite or unsafe I-JSON number/);
+assert.throws(() => parseJcsJsonStrict(Buffer.from([0xff])), /encoded|encoding/i);
+assert.throws(() => parseJcsJsonStrict(Buffer.from([0xef, 0xbb, 0xbf, 0x7b, 0x7d])), /BOM/);
+process.stdout.write("REJECTED duplicate keys, unsafe integers, and non-finite numeric literals before signature verification\n");
 
 const backwardsTime = structuredClone(base);
 backwardsTime.signature.signed_at = "2026-10-12T13:59:00Z";
