@@ -81,6 +81,18 @@ const wrongKeyId = { keyId: "unrelated-reviewer-key", publicKey: trustedKey.publ
 if (verifyCardSignatureRaw(JSON.stringify(base), wrongKeyId)) throw new Error("Signature verified with an unbound key identifier");
 process.stdout.write("REJECTED signature with mismatched trusted key ID\n");
 
+for (const [label, signatureText] of [
+  ["padded signature encoding", `${base.signature.signature_b64url}=`],
+  ["invalid signature character", `${base.signature.signature_b64url}#`]
+]) {
+  const altered = structuredClone(base);
+  altered.signature.signature_b64url = signatureText;
+  if (verifyCardSignatureRaw(JSON.stringify(altered), trustedKey)) {
+    throw new Error(`Accepted ${label}`);
+  }
+  process.stdout.write(`REJECTED ${label}\n`);
+}
+
 const duplicateDecision = readFileSync(new URL(`examples/${files[0]}`, root), "utf8")
   .replace('"decision": "accept"', '"decision": "accept", "decision": "reject"');
 assert.throws(() => verifyCardSignatureRaw(duplicateDecision, trustedKey), /Duplicate JSON object key/);
