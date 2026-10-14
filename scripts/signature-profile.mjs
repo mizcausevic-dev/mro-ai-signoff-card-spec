@@ -36,11 +36,13 @@ export function signatureDigest(card) {
 // Only use this parsed-object helper after strict raw parsing. JSON.parse alone
 // loses duplicate keys and may round unsafe integer literals before hashing.
 export function verifyCardSignature(card, trustedKeyRecord) {
-  if (card.signature?.profile !== "JCS-SHA256-Ed25519-v1") return false;
+  if (card?.signature?.profile !== "JCS-SHA256-Ed25519-v1") return false;
   if (!trustedKeyRecord?.publicKey || !trustedKeyRecord.keyId) return false;
   if (card.signature.key_id !== trustedKeyRecord.keyId) return false;
-  const signature = Buffer.from(card.signature.signature_b64url, "base64url");
-  if (signature.length !== 64) return false;
+  const encoded = card.signature.signature_b64url;
+  if (typeof encoded !== "string" || !/^[A-Za-z0-9_-]{86}$/.test(encoded)) return false;
+  const signature = Buffer.from(encoded, "base64url");
+  if (signature.length !== 64 || signature.toString("base64url") !== encoded) return false;
   return verify(null, signatureDigest(card), trustedKeyRecord.publicKey, signature);
 }
 
